@@ -1,12 +1,6 @@
 import cv2
 import mediapipe as mp
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-import pyautogui as pg
-from typing import Tuple
 from tkinter import *
-import time
-import threading
 
 
 cap = cv2.VideoCapture(0)
