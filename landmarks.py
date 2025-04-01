@@ -130,8 +130,8 @@ def draw_landmarks_on_cv2_capture():
     cv2.destroyAllWindows()
 
 
-def main():
-    image = mp.Image.create_from_file("business-person.png")
+def draw_landmark(img_path):
+    image = mp.Image.create_from_file(img_path)
     detection_result = get_landmarks(image)
     annotated_image = draw_landmarks_on_image(image.numpy_view(), detection_result)
 
@@ -140,12 +140,11 @@ def main():
     cv2.waitKey(0)
 
     plot_face_blendshapes_bar_graph(detection_result.face_blendshapes[0])
-
     print(detection_result.facial_transformation_matrixes)
 
 
 if __name__ == '__main__':
-    # main()
+    # draw_landmark('business-person.png')  
     draw_landmarks_on_cv2_capture()
 
 
