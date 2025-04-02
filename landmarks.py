@@ -1,4 +1,3 @@
-from mediapipe import solutions
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe.framework.formats import landmark_pb2
@@ -6,9 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import mediapipe as mp
-import matplotlib.pyplot as plt
 
-def draw_landmarks_on_image(rgb_image, detection_result):
+
+def draw_landmarks_on_image(rgb_image, detection_result, draw_iris=True, draw_contours=True, draw_tesselation=True, landmark_indices=None):
+
     face_landmarks_list = detection_result.face_landmarks
     annotated_image = np.copy(rgb_image)
 
@@ -16,41 +16,73 @@ def draw_landmarks_on_image(rgb_image, detection_result):
     for idx in range(len(face_landmarks_list)):
         face_landmarks = face_landmarks_list[idx]
 
-        # Draw the face landmarks.
+        # Draw specific landmarks or all
+        if landmark_indices is not None:
+            selected_landmarks = [face_landmarks[i] for i in landmark_indices]
+        else:
+            selected_landmarks = face_landmarks
+
         face_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
         face_landmarks_proto.landmark.extend(
             [
                 landmark_pb2.NormalizedLandmark(
                     x=landmark.x, y=landmark.y, z=landmark.z
                 )
-                for landmark in face_landmarks
+                for landmark in selected_landmarks
             ]
         )
 
-        solutions.drawing_utils.draw_landmarks(
-            image=annotated_image,
-            landmark_list=face_landmarks_proto,
-            connections=mp.solutions.face_mesh.FACEMESH_TESSELATION,
-            landmark_drawing_spec=None,
-            connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_tesselation_style(),
-        )
-        solutions.drawing_utils.draw_landmarks(
-            image=annotated_image,
-            landmark_list=face_landmarks_proto,
-            connections=mp.solutions.face_mesh.FACEMESH_CONTOURS,
-            landmark_drawing_spec=None,
-            connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_contours_style(),
-        )
-        solutions.drawing_utils.draw_landmarks(
-            image=annotated_image,
-            landmark_list=face_landmarks_proto,
-            connections=mp.solutions.face_mesh.FACEMESH_IRISES,
-            landmark_drawing_spec=None,
-            connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_iris_connections_style(),
-        )
+        if draw_tesselation:
+            mp.solutions.drawing_utils.draw_landmarks(
+                image=annotated_image,
+                landmark_list=face_landmarks_proto,
+                connections=mp.solutions.face_mesh.FACEMESH_TESSELATION,
+                landmark_drawing_spec=None,
+                connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_tesselation_style(),
+            )
+        if draw_contours:
+            mp.solutions.drawing_utils.draw_landmarks(
+                image=annotated_image,
+                landmark_list=face_landmarks_proto,
+                connections=mp.solutions.face_mesh.FACEMESH_CONTOURS,
+                landmark_drawing_spec=None,
+                connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_contours_style(),
+            )
+        if draw_iris:
+            mp.solutions.drawing_utils.draw_landmarks(
+                image=annotated_image,
+                landmark_list=face_landmarks_proto,
+                connections=mp.solutions.face_mesh.FACEMESH_IRISES,
+                landmark_drawing_spec=None,
+                connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_iris_connections_style(),
+            )
 
     return annotated_image
 
+def get_iris_landmarks(detection_result):
+
+    iris_landmarks_list = []
+
+    if detection_result.face_landmarks:
+        for face_landmarks in detection_result.face_landmarks:
+            left_iris_landmarks = [face_landmarks[i] for i in [474, 475, 477, 476]]
+            right_iris_landmarks = [face_landmarks[i] for i in [469, 470, 471, 472]]
+
+            left_iris_coords = [
+                {"x": landmark.x, "y": landmark.y, "z": landmark.z}
+                for landmark in left_iris_landmarks
+            ]
+            right_iris_coords = [
+                {"x": landmark.x, "y": landmark.y, "z": landmark.z}
+                for landmark in right_iris_landmarks
+            ]
+
+            iris_landmarks_list.append({
+                "left_iris": left_iris_coords,
+                "right_iris": right_iris_coords,
+            })
+
+    return iris_landmarks_list
 
 def plot_face_blendshapes_bar_graph(face_blendshapes):
     # Extract the face blendshapes category names and scores.
@@ -106,6 +138,11 @@ def get_landmarks(image):
 
 def draw_landmarks_on_cv2_capture():
     capture = cv2.VideoCapture(0)
+    width = 1280
+    height = 720
+
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)  # Set width
+    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)  # Set height
 
     while True:
 
@@ -119,7 +156,9 @@ def draw_landmarks_on_cv2_capture():
         ) 
 
         detection_result = get_landmarks(mp_image)
-        annotated_image = draw_landmarks_on_image(mp_image.numpy_view(), detection_result)
+        iris_lnd = get_iris_landmarks(detection_result)
+        print(iris_lnd)
+        annotated_image = draw_landmarks_on_image(mp_image.numpy_view(), detection_result, )
 
         annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
         cv2.imshow("image", annotated_image)
